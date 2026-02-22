@@ -83,4 +83,6 @@ Let sound disappear into the dark.
 
 Use your ears and trust the space.
 
-CK Audio Design
+## License
+
+Copyright 2025 CK Audio Design
