@@ -61,13 +61,15 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
 
-    // Reverb parameters
+    // UI parameters
     std::atomic<float>* roomSizeParam = nullptr;
+    std::atomic<float>* decayParam = nullptr;
+    std::atomic<float>* preDelayParam = nullptr;
     std::atomic<float>* dampingParam = nullptr;
-    std::atomic<float>* wetLevelParam = nullptr;
-    std::atomic<float>* dryLevelParam = nullptr;
+    std::atomic<float>* mixParam = nullptr;
     std::atomic<float>* widthParam = nullptr;
-    std::atomic<float>* freezeParam = nullptr;
+    std::atomic<float>* lowCutParam = nullptr;
+    std::atomic<float>* highCutParam = nullptr;
 
 private:
     //==============================================================================
@@ -80,12 +82,14 @@ private:
     double currentSampleRate = 44100.0;
 
     // Cached parameter values
-    float cachedRoomSize = 0.5f;
-    float cachedDamping = 0.5f;
-    float cachedWetLevel = 0.33f;
-    float cachedDryLevel = 0.4f;
-    float cachedWidth = 1.0f;
-    float cachedFreeze = 0.0f;
+    float cachedRoomSize = 50.0f;
+    float cachedDecay = 2.5f;
+    float cachedPreDelay = 20.0f;
+    float cachedDamping = 8000.0f;
+    float cachedMix = 30.0f;
+    float cachedWidth = 100.0f;
+    float cachedLowCut = 20.0f;
+    float cachedHighCut = 12000.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ObsidianSpaceAudioProcessor)
 };

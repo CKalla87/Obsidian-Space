@@ -24,18 +24,20 @@ ObsidianSpaceAudioProcessor::ObsidianSpaceAudioProcessor()
 #endif
 {
     // Get parameter pointers
-    roomSizeParam = apvts.getRawParameterValue("ROOMSIZE");
-    dampingParam = apvts.getRawParameterValue("DAMPING");
-    wetLevelParam = apvts.getRawParameterValue("WET");
-    dryLevelParam = apvts.getRawParameterValue("DRY");
-    widthParam = apvts.getRawParameterValue("WIDTH");
-    freezeParam = apvts.getRawParameterValue("FREEZE");
+    roomSizeParam = apvts.getRawParameterValue ("ROOMSIZE");
+    decayParam = apvts.getRawParameterValue ("DECAY");
+    preDelayParam = apvts.getRawParameterValue ("PREDELAY");
+    dampingParam = apvts.getRawParameterValue ("DAMPING");
+    mixParam = apvts.getRawParameterValue ("MIX");
+    widthParam = apvts.getRawParameterValue ("WIDTH");
+    lowCutParam = apvts.getRawParameterValue ("LOWCUT");
+    highCutParam = apvts.getRawParameterValue ("HIGHCUT");
     
     // Initialize reverb parameters with default values
     reverbParams.roomSize = 0.5f;
     reverbParams.damping = 0.5f;
-    reverbParams.wetLevel = 0.33f;
-    reverbParams.dryLevel = 0.4f;
+    reverbParams.wetLevel = 0.3f;
+    reverbParams.dryLevel = 0.7f;
     reverbParams.width = 1.0f;
     reverbParams.freezeMode = false;
     reverb.setParameters (reverbParams);
@@ -202,54 +204,66 @@ void ObsidianSpaceAudioProcessor::updateParameters()
     const float tolerance = 0.001f;
     
     float roomSize = roomSizeParam->load();
+    float decay = decayParam->load();
+    float preDelay = preDelayParam->load();
     float damping = dampingParam->load();
-    float wetLevel = wetLevelParam->load();
-    float dryLevel = dryLevelParam->load();
+    float mix = mixParam->load();
     float width = widthParam->load();
-    float freeze = freezeParam->load();
+    float lowCut = lowCutParam->load();
+    float highCut = highCutParam->load();
     
     bool needsUpdate = false;
     
     if (std::abs (roomSize - cachedRoomSize) > tolerance)
     {
-        reverbParams.roomSize = roomSize;
+        reverbParams.roomSize = juce::jlimit (0.0f, 1.0f, roomSize / 100.0f);
         cachedRoomSize = roomSize;
         needsUpdate = true;
     }
     
+    if (std::abs (decay - cachedDecay) > tolerance)
+    {
+        cachedDecay = decay;
+    }
+
+    if (std::abs (preDelay - cachedPreDelay) > tolerance)
+    {
+        cachedPreDelay = preDelay;
+    }
+
     if (std::abs (damping - cachedDamping) > tolerance)
     {
-        reverbParams.damping = damping;
+        auto dampingNorm = (std::log (damping) - std::log (1000.0f))
+                           / (std::log (20000.0f) - std::log (1000.0f));
+        reverbParams.damping = juce::jlimit (0.0f, 1.0f, dampingNorm);
         cachedDamping = damping;
         needsUpdate = true;
     }
     
-    if (std::abs (wetLevel - cachedWetLevel) > tolerance)
+    if (std::abs (mix - cachedMix) > tolerance)
     {
-        reverbParams.wetLevel = wetLevel;
-        cachedWetLevel = wetLevel;
-        needsUpdate = true;
-    }
-    
-    if (std::abs (dryLevel - cachedDryLevel) > tolerance)
-    {
-        reverbParams.dryLevel = dryLevel;
-        cachedDryLevel = dryLevel;
+        auto wet = juce::jlimit (0.0f, 1.0f, mix / 100.0f);
+        reverbParams.wetLevel = wet;
+        reverbParams.dryLevel = 1.0f - wet;
+        cachedMix = mix;
         needsUpdate = true;
     }
     
     if (std::abs (width - cachedWidth) > tolerance)
     {
-        reverbParams.width = width;
+        reverbParams.width = juce::jlimit (0.0f, 1.0f, width / 200.0f);
         cachedWidth = width;
         needsUpdate = true;
     }
     
-    if (std::abs (freeze - cachedFreeze) > tolerance)
+    if (std::abs (lowCut - cachedLowCut) > tolerance)
     {
-        reverbParams.freezeMode = freeze > 0.5f;
-        cachedFreeze = freeze;
-        needsUpdate = true;
+        cachedLowCut = lowCut;
+    }
+
+    if (std::abs (highCut - cachedHighCut) > tolerance)
+    {
+        cachedHighCut = highCut;
     }
     
     if (needsUpdate)
@@ -263,46 +277,60 @@ juce::AudioProcessorValueTreeState::ParameterLayout ObsidianSpaceAudioProcessor:
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
-    // Room Size: 0.0 to 1.0, default 0.5
+    // Room Size: 0 to 100, default 50
     params.push_back (std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID ("ROOMSIZE", 1), "Room Size",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
-        0.5f
+        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f),
+        50.0f
     ));
 
-    // Damping: 0.0 to 1.0, default 0.5
+    // Decay: 0.1 to 10.0 seconds, default 2.5
+    params.push_back (std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID ("DECAY", 1), "Decay",
+        juce::NormalisableRange<float> (0.1f, 10.0f, 0.01f),
+        2.5f
+    ));
+
+    // Pre-Delay: 0 to 200 ms, default 20
+    params.push_back (std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID ("PREDELAY", 1), "Pre-Delay",
+        juce::NormalisableRange<float> (0.0f, 200.0f, 1.0f),
+        20.0f
+    ));
+
+    // Damping: 1000 to 20000 Hz, default 8000
     params.push_back (std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID ("DAMPING", 1), "Damping",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
-        0.5f
+        juce::NormalisableRange<float> (1000.0f, 20000.0f, 1.0f),
+        8000.0f
     ));
 
-    // Wet Level: 0.0 to 1.0, default 0.33
+    // Mix: 0 to 100, default 30
     params.push_back (std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID ("WET", 1), "Wet Level",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
-        0.33f
+        juce::ParameterID ("MIX", 1), "Mix",
+        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f),
+        30.0f
     ));
 
-    // Dry Level: 0.0 to 1.0, default 0.4
-    params.push_back (std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID ("DRY", 1), "Dry Level",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
-        0.4f
-    ));
-
-    // Width: 0.0 to 1.0, default 1.0
+    // Width: 0 to 200, default 100
     params.push_back (std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID ("WIDTH", 1), "Width",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
-        1.0f
+        juce::NormalisableRange<float> (0.0f, 200.0f, 0.1f),
+        100.0f
     ));
 
-    // Freeze: 0.0 to 1.0, default 0.0 (toggle)
+    // Low Cut: 20 to 500 Hz, default 20
     params.push_back (std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID ("FREEZE", 1), "Freeze",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
-        0.0f
+        juce::ParameterID ("LOWCUT", 1), "Low Cut",
+        juce::NormalisableRange<float> (20.0f, 500.0f, 1.0f),
+        20.0f
+    ));
+
+    // High Cut: 2000 to 20000 Hz, default 12000
+    params.push_back (std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID ("HIGHCUT", 1), "High Cut",
+        juce::NormalisableRange<float> (2000.0f, 20000.0f, 1.0f),
+        12000.0f
     ));
 
     return { params.begin(), params.end() };

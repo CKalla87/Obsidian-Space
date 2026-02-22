@@ -9,231 +9,160 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+SliderPanel::SliderPanel (const juce::String& title,
+                          const juce::String& firstLabel, LabeledSliderRow::Unit firstUnit,
+                          const juce::String& secondLabel, LabeledSliderRow::Unit secondUnit)
+    : firstRow (firstLabel, firstUnit),
+      secondRow (secondLabel, secondUnit)
+{
+    titleLabel.setText (title, juce::dontSendNotification);
+    titleLabel.setJustificationType (juce::Justification::centredLeft);
+    titleLabel.setFont (juce::Font (12.0f, juce::Font::plain));
+    titleLabel.setColour (juce::Label::textColourId, ObsidianStyle::textSecondary().withAlpha (0.85f));
+    addAndMakeVisible (titleLabel);
+
+    addAndMakeVisible (firstRow);
+    addAndMakeVisible (secondRow);
+}
+
+LabeledSliderRow& SliderPanel::getFirstRow()
+{
+    return firstRow;
+}
+
+LabeledSliderRow& SliderPanel::getSecondRow()
+{
+    return secondRow;
+}
+
+void SliderPanel::resized()
+{
+    auto bounds = getLocalBounds().reduced (20, 18);
+    titleLabel.setBounds (bounds.removeFromTop (18));
+    bounds.removeFromTop (12);
+
+    auto rowHeight = (bounds.getHeight() - 16) / 2;
+    firstRow.setBounds (bounds.removeFromTop (rowHeight));
+    bounds.removeFromTop (16);
+    secondRow.setBounds (bounds.removeFromTop (rowHeight));
+}
+
+void SliderPanel::paint (juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+    g.setColour (ObsidianStyle::panelFill());
+    g.fillRoundedRectangle (bounds, 12.0f);
+    g.setColour (ObsidianStyle::panelOverlay());
+    g.fillRoundedRectangle (bounds, 12.0f);
+    g.setColour (ObsidianStyle::borderPurple());
+    g.drawRoundedRectangle (bounds, 12.0f, 1.0f);
+}
+
 //==============================================================================
 ObsidianSpaceAudioProcessorEditor::ObsidianSpaceAudioProcessorEditor (ObsidianSpaceAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+    : AudioProcessorEditor (&p),
+      audioProcessor (p),
+      lookAndFeel(),
+      header(),
+      visualizer (p.roomSizeParam, p.decayParam, p.dampingParam),
+      footer(),
+      roomSizeKnob ("ROOM SIZE", KnobControl::Unit::Percent),
+      decayKnob ("DECAY", KnobControl::Unit::Seconds),
+      preDelayKnob ("PRE-DELAY", KnobControl::Unit::Milliseconds),
+      dampingKnob ("DAMPING", KnobControl::Unit::Hertz),
+      outputPanel ("OUTPUT CONTROL", "DRY / WET MIX", LabeledSliderRow::Unit::Percent,
+                   "STEREO WIDTH", LabeledSliderRow::Unit::Percent),
+      tonePanel ("TONE SHAPING", "LOW CUT", LabeledSliderRow::Unit::Hertz,
+                 "HIGH CUT", LabeledSliderRow::Unit::Hertz)
 {
-    setSize (800, 600);
-    
-    // Initialize fixed background elements
-    initializeBackground();
+    setLookAndFeel (&lookAndFeel);
+    setSize (1288, 991);
 
-    // Room Size slider
-    roomSizeSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    roomSizeSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
-    roomSizeSlider.setColour (juce::Slider::rotarySliderFillColourId, nebulaPurple);
-    roomSizeSlider.setColour (juce::Slider::rotarySliderOutlineColourId, starBlue);
-    roomSizeSlider.setColour (juce::Slider::thumbColourId, starCyan);
-    roomSizeSlider.setColour (juce::Slider::textBoxTextColourId, textColor);
-    roomSizeSlider.setColour (juce::Slider::textBoxBackgroundColourId, spaceBlack);
-    addAndMakeVisible (&roomSizeSlider);
-    roomSizeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "ROOMSIZE", roomSizeSlider);
-    
-    roomSizeLabel.setText ("Room Size", juce::dontSendNotification);
-    roomSizeLabel.setJustificationType (juce::Justification::centred);
-    roomSizeLabel.setColour (juce::Label::textColourId, textColor);
-    addAndMakeVisible (&roomSizeLabel);
+    addAndMakeVisible (header);
+    addAndMakeVisible (visualizer);
+    addAndMakeVisible (roomSizeKnob);
+    addAndMakeVisible (decayKnob);
+    addAndMakeVisible (preDelayKnob);
+    addAndMakeVisible (dampingKnob);
+    addAndMakeVisible (outputPanel);
+    addAndMakeVisible (tonePanel);
+    addAndMakeVisible (footer);
 
-    // Damping slider
-    dampingSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    dampingSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
-    dampingSlider.setColour (juce::Slider::rotarySliderFillColourId, starBlue);
-    dampingSlider.setColour (juce::Slider::rotarySliderOutlineColourId, nebulaPurple);
-    dampingSlider.setColour (juce::Slider::thumbColourId, starCyan);
-    dampingSlider.setColour (juce::Slider::textBoxTextColourId, textColor);
-    dampingSlider.setColour (juce::Slider::textBoxBackgroundColourId, spaceBlack);
-    addAndMakeVisible (&dampingSlider);
-    dampingAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "DAMPING", dampingSlider);
-    
-    dampingLabel.setText ("Damping", juce::dontSendNotification);
-    dampingLabel.setJustificationType (juce::Justification::centred);
-    dampingLabel.setColour (juce::Label::textColourId, textColor);
-    addAndMakeVisible (&dampingLabel);
+    roomSizeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "ROOMSIZE", roomSizeKnob.getSlider());
+    decayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "DECAY", decayKnob.getSlider());
+    preDelayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "PREDELAY", preDelayKnob.getSlider());
+    dampingAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "DAMPING", dampingKnob.getSlider());
 
-    // Wet slider
-    wetSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    wetSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
-    wetSlider.setColour (juce::Slider::rotarySliderFillColourId, starCyan);
-    wetSlider.setColour (juce::Slider::rotarySliderOutlineColourId, starBlue);
-    wetSlider.setColour (juce::Slider::thumbColourId, starWhite);
-    wetSlider.setColour (juce::Slider::textBoxTextColourId, textColor);
-    wetSlider.setColour (juce::Slider::textBoxBackgroundColourId, spaceBlack);
-    addAndMakeVisible (&wetSlider);
-    wetAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "WET", wetSlider);
-    
-    wetLabel.setText ("Wet", juce::dontSendNotification);
-    wetLabel.setJustificationType (juce::Justification::centred);
-    wetLabel.setColour (juce::Label::textColourId, textColor);
-    addAndMakeVisible (&wetLabel);
-
-    // Dry slider
-    drySlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    drySlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
-    drySlider.setColour (juce::Slider::rotarySliderFillColourId, starBlue);
-    drySlider.setColour (juce::Slider::rotarySliderOutlineColourId, nebulaPurple);
-    drySlider.setColour (juce::Slider::thumbColourId, starCyan);
-    drySlider.setColour (juce::Slider::textBoxTextColourId, textColor);
-    drySlider.setColour (juce::Slider::textBoxBackgroundColourId, spaceBlack);
-    addAndMakeVisible (&drySlider);
-    dryAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "DRY", drySlider);
-    
-    dryLabel.setText ("Dry", juce::dontSendNotification);
-    dryLabel.setJustificationType (juce::Justification::centred);
-    dryLabel.setColour (juce::Label::textColourId, textColor);
-    addAndMakeVisible (&dryLabel);
-
-    // Width slider
-    widthSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    widthSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
-    widthSlider.setColour (juce::Slider::rotarySliderFillColourId, nebulaPurple);
-    widthSlider.setColour (juce::Slider::rotarySliderOutlineColourId, starBlue);
-    widthSlider.setColour (juce::Slider::thumbColourId, starCyan);
-    widthSlider.setColour (juce::Slider::textBoxTextColourId, textColor);
-    widthSlider.setColour (juce::Slider::textBoxBackgroundColourId, spaceBlack);
-    addAndMakeVisible (&widthSlider);
-    widthAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "WIDTH", widthSlider);
-    
-    widthLabel.setText ("Width", juce::dontSendNotification);
-    widthLabel.setJustificationType (juce::Justification::centred);
-    widthLabel.setColour (juce::Label::textColourId, textColor);
-    addAndMakeVisible (&widthLabel);
-
-    // Freeze slider
-    freezeSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    freezeSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
-    freezeSlider.setColour (juce::Slider::rotarySliderFillColourId, starCyan);
-    freezeSlider.setColour (juce::Slider::rotarySliderOutlineColourId, nebulaPurple);
-    freezeSlider.setColour (juce::Slider::thumbColourId, starWhite);
-    freezeSlider.setColour (juce::Slider::textBoxTextColourId, textColor);
-    freezeSlider.setColour (juce::Slider::textBoxBackgroundColourId, spaceBlack);
-    addAndMakeVisible (&freezeSlider);
-    freezeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "FREEZE", freezeSlider);
-    
-    freezeLabel.setText ("Freeze", juce::dontSendNotification);
-    freezeLabel.setJustificationType (juce::Justification::centred);
-    freezeLabel.setColour (juce::Label::textColourId, textColor);
-    addAndMakeVisible (&freezeLabel);
+    mixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "MIX", outputPanel.getFirstRow().getSlider());
+    widthAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "WIDTH", outputPanel.getSecondRow().getSlider());
+    lowCutAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "LOWCUT", tonePanel.getFirstRow().getSlider());
+    highCutAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "HIGHCUT", tonePanel.getSecondRow().getSlider());
 }
 
 ObsidianSpaceAudioProcessorEditor::~ObsidianSpaceAudioProcessorEditor()
 {
+    setLookAndFeel (nullptr);
 }
 
 //==============================================================================
-void ObsidianSpaceAudioProcessorEditor::initializeBackground()
-{
-    juce::Random r (12345); // Fixed seed for consistent background
-    stars.clear();
-    nebulas.clear();
-    
-    // Generate fixed star positions
-    for (int i = 0; i < 200; ++i)
-    {
-        Star star;
-        star.x = r.nextFloat() * 800.0f;
-        star.y = r.nextFloat() * 600.0f;
-        star.size = 0.5f + r.nextFloat() * 1.5f;
-        stars.push_back (star);
-    }
-    
-    // Generate fixed nebula positions
-    for (int i = 0; i < 5; ++i)
-    {
-        Nebula nebula;
-        nebula.x = r.nextFloat() * 800.0f;
-        nebula.y = r.nextFloat() * 600.0f;
-        nebula.radius = 80.0f + r.nextFloat() * 120.0f;
-        nebulas.push_back (nebula);
-    }
-}
-
 void ObsidianSpaceAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    // Deep space black background
-    g.fillAll (spaceBlack);
-    
-    // Draw stars (using fixed positions)
-    g.setColour (starWhite.withAlpha (0.8f));
-    for (const auto& star : stars)
+    auto bounds = getLocalBounds().toFloat();
+    juce::ColourGradient background (ObsidianStyle::backgroundTop(), bounds.getX(), bounds.getY(),
+                                     ObsidianStyle::backgroundBottom(), bounds.getX(), bounds.getBottom(), false);
+    background.addColour (0.5f, ObsidianStyle::backgroundMid());
+    g.setGradientFill (background);
+    g.fillAll();
+
+    if (! knobRowBounds.isEmpty())
     {
-        g.fillEllipse (star.x, star.y, star.size, star.size);
+        auto row = knobRowBounds.toFloat();
+        g.setColour (ObsidianStyle::panelFill());
+        g.fillRoundedRectangle (row, 12.0f);
+        g.setColour (ObsidianStyle::panelOverlay());
+        g.fillRoundedRectangle (row, 12.0f);
+        g.setColour (ObsidianStyle::borderPurple());
+        g.drawRoundedRectangle (row, 12.0f, 1.0f);
     }
-    
-    // Draw nebula clouds (using fixed positions)
-    g.setColour (nebulaPurple.withAlpha (0.3f));
-    for (const auto& nebula : nebulas)
-    {
-        g.fillEllipse (nebula.x - nebula.radius/2, nebula.y - nebula.radius/2, nebula.radius, nebula.radius);
-    }
-    
-    // Draw title with space glow
-    g.setFont (juce::Font (56.0f, juce::Font::bold));
-    
-    // Cyan glow behind text
-    g.setColour (starCyan.withAlpha (0.5f));
-    for (int i = -4; i <= 4; ++i)
-    {
-        for (int j = -4; j <= 4; ++j)
-        {
-            if (i != 0 || j != 0)
-            {
-                g.drawText ("OBSIDIAN SPACE", getWidth() / 2 - 220 + i, 30 + j, 440, 70,
-                           juce::Justification::centred, false);
-            }
-        }
-    }
-    
-    // Main title
-    juce::ColourGradient titleGradient (starCyan, getWidth() / 2 - 220, 30,
-                                       starBlue, getWidth() / 2 - 220, 100,
-                                       false);
-    g.setGradientFill (titleGradient);
-    g.drawText ("OBSIDIAN SPACE", getWidth() / 2 - 220, 30, 440, 70,
-               juce::Justification::centred, false);
-    
-    // Subtitle
-    g.setFont (20.0f);
-    g.setColour (starBlue.withAlpha (0.9f));
-    g.drawText ("Deep Space Reverb", getWidth() / 2 - 150, 95, 300, 30,
-               juce::Justification::centred, false);
 }
 
 void ObsidianSpaceAudioProcessorEditor::resized()
 {
-    const int knobSize = 100;
-    const int labelHeight = 25;
-    const int startY = 150;
-    const int spacing = (getWidth() - 100 - (knobSize * 6)) / 5;
-    
-    int x = 50;
-    
-    // Room Size
-    roomSizeSlider.setBounds (x, startY, knobSize, knobSize);
-    roomSizeLabel.setBounds (x, startY + knobSize + 5, knobSize, labelHeight);
-    x += knobSize + spacing;
-    
-    // Damping
-    dampingSlider.setBounds (x, startY, knobSize, knobSize);
-    dampingLabel.setBounds (x, startY + knobSize + 5, knobSize, labelHeight);
-    x += knobSize + spacing;
-    
-    // Wet
-    wetSlider.setBounds (x, startY, knobSize, knobSize);
-    wetLabel.setBounds (x, startY + knobSize + 5, knobSize, labelHeight);
-    x += knobSize + spacing;
-    
-    // Dry
-    drySlider.setBounds (x, startY, knobSize, knobSize);
-    dryLabel.setBounds (x, startY + knobSize + 5, knobSize, labelHeight);
-    x += knobSize + spacing;
-    
-    // Width
-    widthSlider.setBounds (x, startY, knobSize, knobSize);
-    widthLabel.setBounds (x, startY + knobSize + 5, knobSize, labelHeight);
-    x += knobSize + spacing;
-    
-    // Freeze
-    freezeSlider.setBounds (x, startY, knobSize, knobSize);
-    freezeLabel.setBounds (x, startY + knobSize + 5, knobSize, labelHeight);
+    auto bounds = getLocalBounds();
+    const int headerHeight = 80;
+    const int knobRowHeight = 200;
+    const int bottomRowHeight = 260;
+
+    header.setBounds (bounds.removeFromTop (headerHeight));
+
+    auto content = bounds.reduced (40);
+    auto vizArea = content.removeFromTop (256);
+    visualizer.setBounds (vizArea);
+    content.removeFromTop (40);
+
+    knobRowBounds = content.removeFromTop (knobRowHeight);
+    const int knobSize = 90;
+    const int gap = 40;
+    const int totalWidth = knobSize * 4 + gap * 3;
+    const int startX = knobRowBounds.getX() + (knobRowBounds.getWidth() - totalWidth) / 2;
+    const int knobY = knobRowBounds.getY();
+
+    roomSizeKnob.setBounds (startX, knobY, knobSize, knobRowBounds.getHeight());
+    decayKnob.setBounds (startX + (knobSize + gap), knobY, knobSize, knobRowBounds.getHeight());
+    preDelayKnob.setBounds (startX + (knobSize + gap) * 2, knobY, knobSize, knobRowBounds.getHeight());
+    dampingKnob.setBounds (startX + (knobSize + gap) * 3, knobY, knobSize, knobRowBounds.getHeight());
+
+    content.removeFromTop (40);
+
+    auto bottomRow = content.removeFromTop (bottomRowHeight);
+    auto left = bottomRow.removeFromLeft ((bottomRow.getWidth() - 32) / 2);
+    bottomRow.removeFromLeft (32);
+    auto right = bottomRow;
+
+    outputPanel.setBounds (left);
+    tonePanel.setBounds (right);
+
+    content.removeFromTop (24);
+    footer.setBounds (content.removeFromTop (40));
 }
 

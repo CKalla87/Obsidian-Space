@@ -10,6 +10,31 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "ObsidianSpaceLookAndFeel.h"
+#include "HeaderComponent.h"
+#include "FooterComponent.h"
+#include "VisualizerComponent.h"
+#include "KnobControl.h"
+#include "LabeledSliderRow.h"
+
+class SliderPanel : public juce::Component
+{
+public:
+    SliderPanel (const juce::String& title,
+                 const juce::String& firstLabel, LabeledSliderRow::Unit firstUnit,
+                 const juce::String& secondLabel, LabeledSliderRow::Unit secondUnit);
+
+    LabeledSliderRow& getFirstRow();
+    LabeledSliderRow& getSecondRow();
+
+    void resized() override;
+    void paint (juce::Graphics& g) override;
+
+private:
+    juce::Label titleLabel;
+    LabeledSliderRow firstRow;
+    LabeledSliderRow secondRow;
+};
 
 //==============================================================================
 /**
@@ -27,48 +52,29 @@ public:
 private:
     ObsidianSpaceAudioProcessor& audioProcessor;
 
-    // Outer space theme colors
-    juce::Colour spaceBlack = juce::Colour::fromFloatRGBA (0.02f, 0.02f, 0.05f, 1.0f);  // Deep space black
-    juce::Colour nebulaPurple = juce::Colour::fromFloatRGBA (0.4f, 0.2f, 0.6f, 1.0f);  // Nebula purple
-    juce::Colour starBlue = juce::Colour::fromFloatRGBA (0.3f, 0.5f, 0.9f, 1.0f);  // Star blue
-    juce::Colour starCyan = juce::Colour::fromFloatRGBA (0.2f, 0.8f, 1.0f, 1.0f);  // Bright cyan
-    juce::Colour starWhite = juce::Colour::fromFloatRGBA (0.95f, 0.95f, 1.0f, 1.0f);  // Star white
-    juce::Colour textColor = starWhite;
+    ObsidianSpaceLookAndFeel lookAndFeel;
+    HeaderComponent header;
+    VisualizerComponent visualizer;
+    FooterComponent footer;
 
-    // Fixed star and nebula positions (to prevent background from changing)
-    struct Star
-    {
-        float x, y, size;
-    };
-    struct Nebula
-    {
-        float x, y, radius;
-    };
-    std::vector<Star> stars;
-    std::vector<Nebula> nebulas;
-    void initializeBackground();
+    KnobControl roomSizeKnob;
+    KnobControl decayKnob;
+    KnobControl preDelayKnob;
+    KnobControl dampingKnob;
 
-    // Controls
-    juce::Slider roomSizeSlider;
-    juce::Slider dampingSlider;
-    juce::Slider wetSlider;
-    juce::Slider drySlider;
-    juce::Slider widthSlider;
-    juce::Slider freezeSlider;
-    
-    juce::Label roomSizeLabel;
-    juce::Label dampingLabel;
-    juce::Label wetLabel;
-    juce::Label dryLabel;
-    juce::Label widthLabel;
-    juce::Label freezeLabel;
-    
+    SliderPanel outputPanel;
+    SliderPanel tonePanel;
+
+    juce::Rectangle<int> knobRowBounds;
+
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> roomSizeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> decayAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> preDelayAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> dampingAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> wetAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> dryAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> widthAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> freezeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lowCutAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> highCutAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ObsidianSpaceAudioProcessorEditor)
 };

@@ -4,7 +4,7 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" cppLanguageStandard="17"
               pluginChannelConfigs="{2, 2}" companyWebsite="www.example.com"
               companyName="CK Audio Design" companyCopyright="2025" pluginManufacturerCode="CKAD"
-              pluginCode="ObSp" pluginFormats=" buildAAX, buildStandalone, buildVST3,buildAAX,buildAU,buildVST3"
+              pluginCode="ObSp" pluginFormats="buildAAX,buildAU,buildVST3,buildStandalone"
               pluginAAXCategory="3">
   <MAINGROUP id="jXVMvd" name="Obsidian Space">
     <GROUP id="{9599FCC3-1EB7-A668-23ED-93BE4AF42C8A}" name="Source">
@@ -15,6 +15,30 @@
       <FILE id="SoUkjD" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <FILE id="uzM97Y" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+      <FILE id="zq0oNg" name="ObsidianSpaceLookAndFeel.cpp" compile="1" resource="0"
+            file="Source/ObsidianSpaceLookAndFeel.cpp"/>
+      <FILE id="u4xS8Q" name="ObsidianSpaceLookAndFeel.h" compile="0" resource="0"
+            file="Source/ObsidianSpaceLookAndFeel.h"/>
+      <FILE id="B4mJ9x" name="VisualizerComponent.cpp" compile="1" resource="0"
+            file="Source/VisualizerComponent.cpp"/>
+      <FILE id="xK2p1Q" name="VisualizerComponent.h" compile="0" resource="0"
+            file="Source/VisualizerComponent.h"/>
+      <FILE id="hM7pYc" name="KnobControl.cpp" compile="1" resource="0"
+            file="Source/KnobControl.cpp"/>
+      <FILE id="v2fQ3N" name="KnobControl.h" compile="0" resource="0"
+            file="Source/KnobControl.h"/>
+      <FILE id="sF4xV2" name="LabeledSliderRow.cpp" compile="1" resource="0"
+            file="Source/LabeledSliderRow.cpp"/>
+      <FILE id="kP9wT1" name="LabeledSliderRow.h" compile="0" resource="0"
+            file="Source/LabeledSliderRow.h"/>
+      <FILE id="nH5qL7" name="HeaderComponent.cpp" compile="1" resource="0"
+            file="Source/HeaderComponent.cpp"/>
+      <FILE id="Qm6vR2" name="HeaderComponent.h" compile="0" resource="0"
+            file="Source/HeaderComponent.h"/>
+      <FILE id="tR8pN4" name="FooterComponent.cpp" compile="1" resource="0"
+            file="Source/FooterComponent.cpp"/>
+      <FILE id="mV1sG9" name="FooterComponent.h" compile="0" resource="0"
+            file="Source/FooterComponent.h"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"
