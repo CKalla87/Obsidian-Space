@@ -32,6 +32,7 @@ ObsidianSpaceAudioProcessor::ObsidianSpaceAudioProcessor()
     widthParam = apvts.getRawParameterValue ("WIDTH");
     lowCutParam = apvts.getRawParameterValue ("LOWCUT");
     highCutParam = apvts.getRawParameterValue ("HIGHCUT");
+    powerParam = apvts.getRawParameterValue ("POWER");
     
     // Initialize reverb parameters with default values
     reverbParams.roomSize = 0.5f;
@@ -159,6 +160,17 @@ void ObsidianSpaceAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
+
+    const bool isPowered = powerParam == nullptr || powerParam->load() > 0.5f;
+    if (isPowered != cachedPower)
+    {
+        cachedPower = isPowered;
+        if (! isPowered)
+            reverb.reset();
+    }
+
+    if (! isPowered)
+        return;
 
     updateParameters();
 
@@ -331,6 +343,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout ObsidianSpaceAudioProcessor:
         juce::ParameterID ("HIGHCUT", 1), "High Cut",
         juce::NormalisableRange<float> (2000.0f, 20000.0f, 1.0f),
         12000.0f
+    ));
+
+    // Power: on/off, default on
+    params.push_back (std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID ("POWER", 1), "Power", true
     ));
 
     return { params.begin(), params.end() };

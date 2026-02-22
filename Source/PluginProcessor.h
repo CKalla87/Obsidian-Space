@@ -70,6 +70,7 @@ public:
     std::atomic<float>* widthParam = nullptr;
     std::atomic<float>* lowCutParam = nullptr;
     std::atomic<float>* highCutParam = nullptr;
+    std::atomic<float>* powerParam = nullptr;
 
 private:
     //==============================================================================
@@ -90,6 +91,7 @@ private:
     float cachedWidth = 100.0f;
     float cachedLowCut = 20.0f;
     float cachedHighCut = 12000.0f;
+    bool cachedPower = true;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ObsidianSpaceAudioProcessor)
 };

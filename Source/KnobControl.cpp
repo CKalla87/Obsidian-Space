@@ -37,8 +37,9 @@ void KnobControl::resized()
     const int valueHeight = 20;
     const int spacing = 6;
 
+    const int totalHeight = knobSize + spacing + labelHeight + spacing + valueHeight;
     auto knobX = bounds.getX() + (bounds.getWidth() - knobSize) / 2;
-    auto knobY = bounds.getY() + 8;
+    auto knobY = bounds.getY() + (bounds.getHeight() - totalHeight) / 2;
 
     knob.setBounds (knobX, knobY, knobSize, knobSize);
     label.setBounds (bounds.getX(), knob.getBottom() + spacing, bounds.getWidth(), labelHeight);

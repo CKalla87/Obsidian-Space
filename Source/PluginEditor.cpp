@@ -88,6 +88,9 @@ ObsidianSpaceAudioProcessorEditor::ObsidianSpaceAudioProcessorEditor (ObsidianSp
     addAndMakeVisible (tonePanel);
     addAndMakeVisible (footer);
 
+    footer.setPowerParam (audioProcessor.powerParam);
+    header.getPowerButton().onClick = [this] { footer.repaint(); };
+
     roomSizeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "ROOMSIZE", roomSizeKnob.getSlider());
     decayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "DECAY", decayKnob.getSlider());
     preDelayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "PREDELAY", preDelayKnob.getSlider());
@@ -97,6 +100,7 @@ ObsidianSpaceAudioProcessorEditor::ObsidianSpaceAudioProcessorEditor (ObsidianSp
     widthAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "WIDTH", outputPanel.getSecondRow().getSlider());
     lowCutAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "LOWCUT", tonePanel.getFirstRow().getSlider());
     highCutAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (audioProcessor.apvts, "HIGHCUT", tonePanel.getSecondRow().getSlider());
+    powerAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (audioProcessor.apvts, "POWER", header.getPowerButton());
 }
 
 ObsidianSpaceAudioProcessorEditor::~ObsidianSpaceAudioProcessorEditor()
@@ -130,15 +134,21 @@ void ObsidianSpaceAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds();
     const int headerHeight = 80;
+    const int footerHeight = 40;
     const int knobRowHeight = 200;
     const int bottomRowHeight = 260;
+    const int sectionGap = 40;
+    const int contentPadding = 40;
+    const int visualizerHeight = 256;
 
     header.setBounds (bounds.removeFromTop (headerHeight));
 
-    auto content = bounds.reduced (40);
-    auto vizArea = content.removeFromTop (256);
+    footer.setBounds (bounds.removeFromBottom (footerHeight));
+
+    auto content = bounds.reduced (contentPadding);
+    auto vizArea = content.removeFromTop (visualizerHeight);
     visualizer.setBounds (vizArea);
-    content.removeFromTop (40);
+    content.removeFromTop (sectionGap);
 
     knobRowBounds = content.removeFromTop (knobRowHeight);
     const int knobSize = 90;
@@ -152,9 +162,9 @@ void ObsidianSpaceAudioProcessorEditor::resized()
     preDelayKnob.setBounds (startX + (knobSize + gap) * 2, knobY, knobSize, knobRowBounds.getHeight());
     dampingKnob.setBounds (startX + (knobSize + gap) * 3, knobY, knobSize, knobRowBounds.getHeight());
 
-    content.removeFromTop (40);
+    content.removeFromTop (sectionGap);
 
-    auto bottomRow = content.removeFromTop (bottomRowHeight);
+    auto bottomRow = content.removeFromTop (juce::jmin (bottomRowHeight, content.getHeight()));
     auto left = bottomRow.removeFromLeft ((bottomRow.getWidth() - 32) / 2);
     bottomRow.removeFromLeft (32);
     auto right = bottomRow;
@@ -162,7 +172,6 @@ void ObsidianSpaceAudioProcessorEditor::resized()
     outputPanel.setBounds (left);
     tonePanel.setBounds (right);
 
-    content.removeFromTop (24);
-    footer.setBounds (content.removeFromTop (40));
+    // Footer already positioned from bottom.
 }
 
