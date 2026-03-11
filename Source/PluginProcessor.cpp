@@ -136,15 +136,14 @@ bool ObsidianSpaceAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
     juce::ignoreUnused (layouts);
     return true;
   #else
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+    // Effect: allow mono and stereo; require input and output layouts to match
+    auto out = layouts.getMainOutputChannelSet();
+    if (out != juce::AudioChannelSet::mono() && out != juce::AudioChannelSet::stereo())
         return false;
-
    #if ! JucePlugin_IsSynth
-    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
+    if (layouts.getMainInputChannelSet() != out)
         return false;
    #endif
-
     return true;
   #endif
 }
